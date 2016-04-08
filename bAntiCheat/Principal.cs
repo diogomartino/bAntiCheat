@@ -134,8 +134,6 @@ namespace bAntiCheat
                 string text = Encoding.UTF8.GetString(dataBuf);
                 string status = string.Empty;
 
-                AppendText("DATA: " + text);
-
                 if (text.Contains("connected")) // entrou no servidor, vai verificar se há cheats
                 {
                     string sub_pID = Functions.GetBetween(text, "|", "|");
