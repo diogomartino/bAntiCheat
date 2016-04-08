@@ -25,6 +25,9 @@ namespace bAntiCheat
         private static string gtaPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).ToString() + @"\path.txt";
         private static Config Cfg = new Config();
 
+        /// <summary>
+        /// Builder principal
+        /// </summary>
         public Principal()
         {
             try
@@ -64,12 +67,19 @@ namespace bAntiCheat
             }
         }
 
+        /// <summary>
+        /// Escreve no mainthread de threads secundários
+        /// </summary>
+        /// <param name="text"></param>
         public void AppendText(string text)
         {
             MethodInvoker action = delegate { richTextBox1.Text += "\n" + text; };
             richTextBox1.BeginInvoke(action);
         }
 
+        /// <summary>
+        /// Inicia o servidor de sockets
+        /// </summary>
         private void SetupServer()
         {
             try
@@ -86,6 +96,10 @@ namespace bAntiCheat
             }
         }
 
+        /// <summary>
+        /// Aceita a conexão do servidor
+        /// </summary>
+        /// <param name="AR"></param>
         private void AcceptCallback(IAsyncResult AR)
         {
             try
@@ -104,6 +118,10 @@ namespace bAntiCheat
             }
         }
 
+        /// <summary>
+        /// Interpreta a resposta do servidor
+        /// </summary>
+        /// <param name="AR"></param>
         private void ReceiveCallback(IAsyncResult AR)
         {
             try
@@ -116,12 +134,27 @@ namespace bAntiCheat
                 string text = Encoding.UTF8.GetString(dataBuf);
                 string status = string.Empty;
 
+                AppendText("DATA: " + text);
+
                 if (text.Contains("connected")) // entrou no servidor, vai verificar se há cheats
                 {
+                    string sub_pID = Functions.GetBetween(text, "|", "|");
+                    string serverVersion = Functions.GetBetween(text, ",", ",");
+
                     int pID;
                     Int32.TryParse(text, out pID);
 
                     Player.playerid = pID;
+
+                    //MessageBox.Show("sub_pID: " + sub_pID + " | serverVersion: " + serverVersion + " | acVersion: " + Cfg.acVersion);
+
+                    if (serverVersion != Cfg.acVersion)
+                    {
+                        status = Player.playerid + "'updateneed'" + Player.UID;
+                        AppendText("O teu anticheat está desactualizado.");
+                        goto DATASEND;
+                    }
+
                     AppendText("Bem vindo ao servidor. O teu playerid é " + pID + " .");
 
                     if (VerificarCheats() == true)
@@ -134,11 +167,11 @@ namespace bAntiCheat
                         Player.connected = true;
                     }
                 }
-                else if(text.Contains("closeac")) 
+                else if(text.Contains("disconnect")) 
                 {
-                    status = Player.playerid + "'off'" + Player.UID;
-
-                    Environment.Exit(-1);
+                    AppendText("Saíste do servidor.");
+                    Player.connected = false;
+                    return;
                 }
                 else if (text.Contains("check")) 
                 {
@@ -148,9 +181,11 @@ namespace bAntiCheat
                     }
                     else
                     {
-                        status = Player.playerid + "'on'" + Player.UID;
+                        status = Player.playerid + "'online'" + Player.UID;
                     }
                 }
+
+                DATASEND:
 
                 byte[] data = Encoding.UTF8.GetBytes(status);
                 socket.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
@@ -163,6 +198,10 @@ namespace bAntiCheat
             }
         }
 
+        /// <summary>
+        /// Envia uma resposta ao servidor
+        /// </summary>
+        /// <param name="AR"></param>
         private void SendCallback(IAsyncResult AR)
         {
             try
@@ -173,6 +212,9 @@ namespace bAntiCheat
             catch { }
         }
 
+        /// <summary>
+        /// Verifica se há cheats. Retorna TRUE caso haja e FALSE caso não haja
+        /// </summary>
         private bool VerificarCheats()
         {
             try
@@ -268,9 +310,33 @@ namespace bAntiCheat
 
     static class Functions
     {
+        /// <summary>
+        /// Funciona da mesma maneira da string.Contains só que tem a opção de se Case Sensitive
+        /// </summary>
         public static bool Contains(this string source, string toCheck, StringComparison comp)
         {
             return source != null && toCheck != null && source.IndexOf(toCheck, comp) >= 0;
+        }
+
+        /// <summary>
+        /// Retorna a string entre uma string (strStart) e outra (strEnd)
+        /// </summary>
+        /// <param name="strSource"></param>
+        /// <param name="strStart"></param>
+        /// <param name="strEnd"></param>
+        public static string GetBetween(string strSource, string strStart, string strEnd)
+        {
+            int Start, End;
+            if (strSource.Contains(strStart) && strSource.Contains(strEnd))
+            {
+                Start = strSource.IndexOf(strStart, 0) + strStart.Length;
+                End = strSource.IndexOf(strEnd, Start);
+                return strSource.Substring(Start, End - Start);
+            }
+            else
+            {
+                return "";
+            }
         }
     }
 }

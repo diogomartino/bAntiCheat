@@ -14,21 +14,27 @@
 #include            <DOF2>
 
 #define 			BAN_IF_CHEATER_ON_CONNECT 			false
+#define             CURRENT_VERSION                     "1.0.1"
+#define             TIMERDELAY_CHECKAC                  5000 // (em MS) De quanto em quanto tempo o servidor vai pedir informações ao cliente.
+#define         	TIMERDELAY_CONFIRMACCHECK           2000 // (em MS) É o tempo que demora o script a kickar ou não o jogador depois do anticheat enviar a resposta.
+#define             TIMERDELAY_CHECKFORACONCONNECT      3000 // (em MS) É o tempo que demora o anticheat a atuar depois de o jogador se conectar.
+
 #define 			COLOR_ORANGE            			0xFF9900AA
 
 new Socket: bac_Socket[MAX_PLAYERS];
 new bool: IsACConnected[MAX_PLAYERS];
 new bool: IsCheater[MAX_PLAYERS];
+new bool: UpdateNeeded[MAX_PLAYERS];
 new CheckACTimer[MAX_PLAYERS];
-new KeepCheckingACTimer[MAX_PLAYERS];
+new ConfirmACCheckTimer[MAX_PLAYERS];
 new pUID[32][MAX_PLAYERS];
 new Banido[MAX_PLAYERS];
 new CheatsCount[MAX_PLAYERS];
 
 forward GuardarStats(playerid, UID[]);
-forward KeepCheckingAC(playerid);
+forward ConfirmACCheck(playerid);
 forward CheckAC(playerid);
-forward CheckForAC(playerid);
+forward CheckForACOnConnect(playerid);
 forward KickP(playerid);
 
 public OnFilterScriptInit()
@@ -62,23 +68,24 @@ public OnPlayerConnect(playerid)
     
 	IsACConnected[playerid] = false;
 	IsCheater[playerid] = false;
+	UpdateNeeded[playerid] = false;
 	
-	format(string, sizeof(string), "connected %d", playerid);
+	format(string, sizeof(string), "connected |%d| ,%s,", playerid, CURRENT_VERSION); // azeite
 	
 	socket_connect(bac_Socket[playerid], pIP, 4000);
 	socket_send(bac_Socket[playerid], string, sizeof(string));
 	
-	SetTimerEx("CheckForAC", 10000, false, "i", playerid);
+	SetTimerEx("CheckForACOnConnect", TIMERDELAY_CHECKFORACONCONNECT, false, "i", playerid);
     
 	return 1;
 }
 
 public OnPlayerDisconnect(playerid, reason)
 {
-    socket_send(bac_Socket[playerid], "closeac", 16);
+    socket_send(bac_Socket[playerid], "disconnect", 16);
 	socket_destroy(bac_Socket[playerid]);
 	
-	KillTimer(KeepCheckingACTimer[playerid]);
+	KillTimer(ConfirmACCheckTimer[playerid]);
 	KillTimer(CheckACTimer[playerid]);
 	
 	GuardarStats(playerid, pUID[playerid]);
@@ -90,46 +97,18 @@ public onSocketAnswer(Socket:id, data[], data_len)
 {
 	new playerid;
 	new output[3][32];
-	new ficheiro[64];
-	new pName[MAX_PLAYER_NAME];
-
-	GetPlayerName(playerid, pName, sizeof(pName));
 	
-	strexplode(output, data, "'"); // template: [ playerid'status'UID ]
+	explode(output, data, "'"); // template: [ playerid'status'UID ]
 	
+	playerid = strval(output[0]);
 	pUID[playerid] = output[2];
 
-	format(ficheiro, sizeof(ficheiro), "bAntiCheat/%s.ini", pUID[playerid]);
-	
-	if(!DOF2_FileExists(ficheiro))
-	{
-	    DOF2_CreateFile(ficheiro);
-	    
-	    DOF2_SetString(ficheiro, "UID", pUID[playerid]);
-	    DOF2_SetInt(ficheiro, "Banido", 0);
-	    DOF2_SetInt(ficheiro, "CheatsCount", 0);
-	    DOF2_SetString(ficheiro, "LastName", pName);
-	    
-	    DOF2_SaveFile();
-	}
-	else
-	{
-	    Banido[playerid] = DOF2_GetInt(ficheiro, "Banido");
-	    CheatsCount[playerid] = DOF2_GetInt(ficheiro, "CheatsCount");
-	}
-	
-	if(Banido[playerid] == 1)
-	{
-	    SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Estás banido do servidor");
-		SetTimerEx("KickP", 50, false, "i", playerid);
-	}
-	
-	if(strcmp(output[1], "secured"))
+	if( strfind(output[1], "secure", true) != -1)
 	{
 		playerid = strval(output[0]);
 	    IsACConnected[playerid] = true;
 	}
-	else if(strcmp(output[1], "cheater"))
+	else if(strfind(output[1], "cheater", true) != -1)
 	{
 		CheatsCount[playerid]++;
 		
@@ -138,16 +117,21 @@ public onSocketAnswer(Socket:id, data[], data_len)
 		Banido[playerid] = 1;
 		#else
 		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Tens ficheiros suspeitos no teu computador!");
-	    SetTimerEx("KickP", 50, false, "i", playerid);
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	    #endif
 	}
-	else if(strcmp(output[1], "off"))
+	else if(strfind(output[1], "off", true) != -1)
 	{
 	    IsACConnected[playerid] = false;
 	}
-	else if(strcmp(output[1], "on"))
+	else if(strfind(output[1], "online", true) != -1)
 	{
 	    IsACConnected[playerid] = true;
+	}
+	else if(strfind(output[1], "updateneed", true) != -1)
+	{
+	    IsACConnected[playerid] = true;
+	    UpdateNeeded[playerid] = true;
 	}
 	else
 	{
@@ -157,50 +141,92 @@ public onSocketAnswer(Socket:id, data[], data_len)
 	return 1;
 }
 
-public CheckForAC(playerid)
+public CheckForACOnConnect(playerid)
 {
 	if(!IsPlayerConnected(playerid)) return 1;
 	
 	if(IsACConnected[playerid] == false)
 	{
 	    SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}O teu anticheat não está ligado ou tens ficheiros suspeitos no teu computador!");
-	    SetTimerEx("KickP", 50, false, "i", playerid);
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	}
 	else if(IsCheater[playerid] == true)
 	{
  		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Tens ficheiros suspeitos no teu computador!");
-	    SetTimerEx("KickP", 50, false, "i", playerid);
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
+	}
+	else if(UpdateNeeded[playerid] == true)
+	{
+ 		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}O teu anticheat está desactualizado!");
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	}
 	else
 	{
+		new ficheiro[64];
+		new pName[MAX_PLAYER_NAME];
+
+		GetPlayerName(playerid, pName, sizeof(pName));
+		format(ficheiro, sizeof(ficheiro), "bAntiCheat/%s.ini", pUID[playerid]);
+
+		if(!DOF2_FileExists(ficheiro))
+		{
+		    DOF2_CreateFile(ficheiro);
+
+		    DOF2_SetString(ficheiro, "UID", pUID[playerid]);
+		    DOF2_SetInt(ficheiro, "Banido", 0);
+		    DOF2_SetInt(ficheiro, "CheatsCount", 0);
+		    DOF2_SetString(ficheiro, "LastName", pName);
+
+		    DOF2_SaveFile();
+		}
+		else
+		{
+		    Banido[playerid] = DOF2_GetInt(ficheiro, "Banido");
+		    CheatsCount[playerid] = DOF2_GetInt(ficheiro, "CheatsCount");
+		}
+		
+		if(Banido[playerid] == 1)
+		{
+	    	SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Estás banido do servidor");
+			return SetTimerEx("KickP", 50, false, "i", playerid);
+		}
+		
 		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Conectado com sucesso!");
-		CheckACTimer[playerid] = SetTimerEx("CheckAC", 5000, true, "i", playerid);
-		KeepCheckingACTimer[playerid] = SetTimerEx("KeepCheckingAC", 5000, true, "i", playerid);
+		CheckACTimer[playerid] = SetTimerEx("CheckAC", TIMERDELAY_CHECKAC, true, "i", playerid);
 	}
+	
 	return 1;
 }
 
 public CheckAC(playerid)
 {
-    IsACConnected[playerid] = false;
-    IsCheater[playerid] = false;
-    
+	IsACConnected[playerid] = false;
+ 	IsCheater[playerid] = false;
+	UpdateNeeded[playerid] = false;
+
 	socket_send(bac_Socket[playerid], "check", 6);
+
+	ConfirmACCheckTimer[playerid] = SetTimerEx("ConfirmACCheck", TIMERDELAY_CONFIRMACCHECK, false, "i", playerid);
 }
 
-public KeepCheckingAC(playerid)
+public ConfirmACCheck(playerid)
 {
 	if(!IsPlayerConnected(playerid)) return 1;
 	
 	if(IsACConnected[playerid] == false)
 	{
 	    SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}O teu anticheat não está ligado!");
-	    SetTimerEx("KickP", 50, false, "i", playerid);
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	}
 	else if(IsCheater[playerid] == true)
 	{
  		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}Tens ficheiros suspeitos no teu computador!");
-	    SetTimerEx("KickP", 50, false, "i", playerid);
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
+	}
+	else if(UpdateNeeded[playerid] == true)
+	{
+ 		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}O teu anticheat está desactualizado!");
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	}
     
 	return 1;

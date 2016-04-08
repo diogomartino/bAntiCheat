@@ -50,10 +50,12 @@ namespace bAntiCheat
     class Config
     {
         public bool analisarOnStartup { get; set; }
+        public string acVersion { get; set; }
 
         public Config()
         {
             analisarOnStartup = true;
+            acVersion = "1.0.1";
         }
     }
 }
