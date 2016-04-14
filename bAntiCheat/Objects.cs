@@ -58,7 +58,7 @@ namespace bAntiCheat
         public Config()
         {
             analisarOnStartup = true;
-            acVersion = "1.0.1";
+            acVersion = "1.0.2";
             md5Hash = checkMD5(System.Reflection.Assembly.GetEntryAssembly().Location);
         }
 
