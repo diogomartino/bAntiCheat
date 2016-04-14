@@ -15,6 +15,7 @@
 
 #define 			BAN_IF_CHEATER_ON_CONNECT 			false
 #define             CURRENT_VERSION                     "1.0.1"
+#define             SERVER_MD5HASH                      ""
 #define             TIMERDELAY_CHECKAC                  5000 // (em MS) De quanto em quanto tempo o servidor vai pedir informações ao cliente.
 #define         	TIMERDELAY_CONFIRMACCHECK           2000 // (em MS) É o tempo que demora o script a kickar ou não o jogador depois do anticheat enviar a resposta.
 #define             TIMERDELAY_CHECKFORACONCONNECT      3000 // (em MS) É o tempo que demora o anticheat a atuar depois de o jogador se conectar.
@@ -69,6 +70,7 @@ public OnPlayerConnect(playerid)
 	IsACConnected[playerid] = false;
 	IsCheater[playerid] = false;
 	UpdateNeeded[playerid] = false;
+	Banido[playerid] = false;
 	
 	format(string, sizeof(string), "connected |%d| ,%s,", playerid, CURRENT_VERSION); // azeite
 	
@@ -96,14 +98,16 @@ public OnPlayerDisconnect(playerid, reason)
 public onSocketAnswer(Socket:id, data[], data_len)
 {
 	new playerid;
-	new output[3][32];
+	new output[4][512];
+	new md5Hash[512];
 	
-	explode(output, data, "'"); // template: [ playerid'status'UID ]
+	explode(output, data, "'"); // template: [ playerid'status'UID'md5Hash ]
 	
 	playerid = strval(output[0]);
 	pUID[playerid] = output[2];
+	md5Hash = output[3];
 
-	if( strfind(output[1], "secure", true) != -1)
+	if(strfind(output[1], "secure", true) != -1)
 	{
 		playerid = strval(output[0]);
 	    IsACConnected[playerid] = true;
@@ -136,6 +140,12 @@ public onSocketAnswer(Socket:id, data[], data_len)
 	else
 	{
 	    IsACConnected[playerid] = false;
+	}
+	
+	if(strcmp(SERVER_MD5HASH, md5Hash))
+	{
+		SendClientMessage(playerid, COLOR_ORANGE, "[bANTICHEAT:] {FFFFFF}O teu anticheat foi modificado!");
+	    return SetTimerEx("KickP", 50, false, "i", playerid);
 	}
 	
 	return 1;

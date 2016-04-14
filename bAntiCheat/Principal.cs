@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
 using System.Threading;
+using System.Security.Cryptography;
 
 namespace bAntiCheat
 {
@@ -134,6 +135,8 @@ namespace bAntiCheat
                 string text = Encoding.UTF8.GetString(dataBuf);
                 string status = string.Empty;
 
+                string azeite = string.Empty;
+
                 if (text.Contains("connected")) // entrou no servidor, vai verificar se há cheats
                 {
                     string sub_pID = Functions.GetBetween(text, "|", "|");
@@ -144,11 +147,9 @@ namespace bAntiCheat
 
                     Player.playerid = pID;
 
-                    //MessageBox.Show("sub_pID: " + sub_pID + " | serverVersion: " + serverVersion + " | acVersion: " + Cfg.acVersion);
-
                     if (serverVersion != Cfg.acVersion)
                     {
-                        status = Player.playerid + "'updateneed'" + Player.UID;
+                        status = Player.playerid + "'updateneed'" + Player.UID + "'" + Cfg.md5Hash;
                         AppendText("O teu anticheat está desactualizado.");
                         goto DATASEND;
                     }
@@ -157,11 +158,11 @@ namespace bAntiCheat
 
                     if (VerificarCheats() == true)
                     {
-                        status = Player.playerid + "'cheater'" + Player.UID;
+                        status = Player.playerid + "'cheater'" + Player.UID + "'" + Cfg.md5Hash;
                     }
                     else
                     {
-                        status = Player.playerid + "'secure'" + Player.UID;
+                        status = Player.playerid + "'secure'" + Player.UID + "'" + Cfg.md5Hash;
                         Player.connected = true;
                     }
                 }
@@ -175,11 +176,11 @@ namespace bAntiCheat
                 {
                     if(VerificarCheats() == true)
                     {
-                        status = Player.playerid + "'cheater'" + Player.UID;
+                        status = Player.playerid + "'cheater'" + Player.UID + "'" + Cfg.md5Hash;
                     }
                     else
                     {
-                        status = Player.playerid + "'online'" + Player.UID;
+                        status = Player.playerid + "'online'" + Player.UID + "'" + Cfg.md5Hash;
                     }
                 }
 
@@ -188,7 +189,6 @@ namespace bAntiCheat
                 byte[] data = Encoding.UTF8.GetBytes(status);
                 socket.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
                 socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), socket);
-
             }
             catch (Exception ex)
             {
@@ -259,7 +259,8 @@ namespace bAntiCheat
 
                 foreach (string s in filesexe)
                 {
-                    if (s.Contains("mod_sa", StringComparison.OrdinalIgnoreCase))
+                    if (s.Contains("mod_sa", StringComparison.OrdinalIgnoreCase) ||
+                        s.Contains("NT037", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -276,6 +277,7 @@ namespace bAntiCheat
                        process.ProcessName.Contains("aimbot") ||
                        process.ProcessName.Contains("bot") ||
                        process.ProcessName.Contains("injector") ||
+                       process.ProcessName.Contains("NT037") ||
                        (process.ProcessName.Contains("samp") && (process.ProcessName.Contains("hack") || process.ProcessName.Contains("mod"))))
                     {
                         return true;
@@ -303,6 +305,11 @@ namespace bAntiCheat
         private void fusionButton1_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Próxima versão", "ABOUT", MessageBoxButtons.OK);
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+            AppendText("MD5Hash: '" + Cfg.md5Hash + "'");
         }
     }
 

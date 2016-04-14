@@ -1,7 +1,6 @@
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\bin\Debug\bAntiCheat.exe.config
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\bin\Debug\bAntiCheat.exe
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\bin\Debug\bAntiCheat.pdb
-C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\obj\Debug\bAntiCheat.csprojResolveAssemblyReference.cache
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\obj\Debug\bAntiCheat.Principal.resources
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\obj\Debug\bAntiCheat.Properties.Resources.resources
 C:\Users\Martino\Desktop\bAntiCheat\bAntiCheat\obj\Debug\bAntiCheat.csproj.GenerateResource.Cache
