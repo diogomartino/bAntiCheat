@@ -29,7 +29,7 @@ namespace bAntiCheat_Client
 
             if(!Directory.Exists(dataPath))
             {
-                if(string.IsNullOrEmpty(AC.GetGTAPath())) {
+                if(string.IsNullOrEmpty(Anticheat.GetGTAPath())) {
                     MessageBox.Show("Can't find the GTA installation directory. Please reinstall SAMP.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     Environment.Exit(-1);
                 }

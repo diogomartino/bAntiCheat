@@ -216,7 +216,7 @@ namespace bAntiCheat_Client
             return response;
         }
 
-        public string GetGTADirectory()
+        public static string GetGTADirectory()
         {
             try
             {
@@ -231,7 +231,7 @@ namespace bAntiCheat_Client
             }
         }
 
-        public string GetGTAPath()
+        public static string GetGTAPath()
         {
             try
             {
