@@ -18,7 +18,7 @@
 #define 		IS_ALIVE_KICK_WAIT  			800 // Time that the server waits to kick the player after the ping request was made
 #define         MAX_BANLIST             		10 // Total banned UID's the server can handle
 
-#define         SECURITY_CODE           		"D74BA841AF32A2A5D9996BD1957613A5053D67C29BBEB8F0B505B2342D532E9A" // AntiCheat client checksum (NEEDS TO BE IN UPPERCASE)
+#define         SECURITY_CODE           		"2820CBC9C2BDD028967500F234B17DE5B0E7B83B8E6D98E9ADB149F427643E3C" // AntiCheat client checksum (NEEDS TO BE IN UPPERCASE)
 #define         SCHEMA_URL                      "https://pastebin.com/raw/sKJzYnAx"
 
 enum e_ConnectionInfo
